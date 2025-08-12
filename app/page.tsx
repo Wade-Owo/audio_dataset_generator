@@ -1,103 +1,191 @@
-import Image from "next/image";
+'use client'
+import { useState } from "react";
+import Select from "react-select";
+import makeAnimated from "react-select/animated";
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [totalSentences, setTotalSentences] = useState(1);
+  const [sentencesPerSpeaker, setSentencesPerSpeaker] = useState(1);
+  const [chosenSpeakers, setChosenSpeakers] = useState([]);
+  const [startingFileNumber, setStartingFileNumber] = useState(1);
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const [isLoading, setIsLoading] = useState(false);
+
+  const speakers = [
+    { value: "Sebastian Lockwood", label: "Sebastian Lockwood" },
+    { value: "Ava Song", label: "Ava Song" },
+    { value: "Live Comedian", label: "Live Comedian" },
+    { value: "Colton Rivers", label: "Colton Rivers" },
+    { value: "Nature Documetary Narrator", label: "Nature Documetary Narrator" },
+    { value: "Alice Bennett", label: "Alice Bennett" },
+    { value: "Sitcom Girl", label: "Sitcom Girl" },
+    { value: "Spanish Instructor", label: "Spanish Instructor" },
+    { value: "Cool Journalist", label: "Cool Journalist" },
+    { value: "Caring Mother", label: "Caring Mother" },
+    { value: "Lady Elizabeth", label: "Lady Elizabeth" },
+    { value: "Male Protagonist", label: "Male Protagonist" },
+    { value: "American Lead Actress", label: "American Lead Actress" },
+    { value: "Male Australian Naturalist", label: "Male Australian Naturalist" },
+    { value: "Sad Old British Man", label: "Sad Old British Man" },
+    { value: "Geraldine Wallace", label: "Geraldine Wallace" },
+    { value: "Mrs. Pembroke", label: "Mrs. Pembroke" },
+    { value: "Male Podcaster", label: "Male Podcaster" },
+    { value: "Booming American Narrator", label: "Booming American Narrator" },
+    { value: "Imani Carter", label: "Imani Carter" },
+  ];
+
+  const animatedComponents = makeAnimated();
+
+  const handleSelectChange = (val) => {
+    const selectedVals = val ? val.map((speaker) => speaker.value) : [];
+    setChosenSpeakers(selectedVals);
+  };
+
+  async function handleGenerate() {
+    setIsLoading(true);
+
+    try {
+      // Step 1: Generate sentences
+      const textResponse = await fetch("/api/words-gen", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ totalSentences }),
+      });
+
+      if (!textResponse.ok) {
+        throw new Error("Failed to generate sentences");
+      }
+
+      const sentences = await textResponse.json();
+
+      // Step 2: Generate audio files with progress updates
+
+      // We'll send sentences in batches of 20 (same as your backend batch size)
+      const batchSize = 20;
+      let completedCount = 0;
+
+      // Instead of one big request, we can chunk to display progress
+      // But since your backend generates all at once, let's simulate progress from response stream.
+
+      // So we do a single request, but use server-sent events or WebSocket for real progress.
+      // If not possible, we'll fake progress updates in intervals during fetch
+
+      // Here, we'll fake progress by polling until download completes:
+      const audioResponse = await fetch("/api/hume-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          request: {
+            sentences,
+            voiceActors: chosenSpeakers,
+            sentencesPerSpeaker,
+            startingFileNumber,
+          },
+        }),
+      });
+
+      if (!audioResponse.ok) {
+        throw new Error("Failed to generate audio");
+      }
+
+      // Fake progress increment every second until download finishes
+      const reader = audioResponse.body?.getReader();
+      if (!reader) {
+        throw new Error("Readable stream not supported");
+      }
+
+      const chunks = [];
+
+      // combine chunks and trigger download
+      const blob = new Blob(chunks, { type: "application/zip" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Audios.zip";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+
+    } catch (err) {
+      console.error(`Error: ${err}`);
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  return (
+    <div className="space-y-5 flex flex-col items-center justify-center">
+      <div className="space-y-2">
+        <h1 className="text-center text-6xl font-bold text-gray-900">AI Audio-Dataset Generator</h1>
+        <h3 className="text-center text-xl text-gray-400 font-semibold">Generating monosyllabic and two-syllable words and bigrams</h3>
+      </div>
+      <div className="border border-gray-200 rounded-lg shadow-xl/20 flex flex-col p-6 box-content size-128 space-y-5 relative overflow-auto">
+          {/* Type of Speaker */}
+          <div className="flex flex-col">
+            <h1 className='font-semibold text-gray-900 text-lg'>Type of Speaker</h1>
+
+            <Select
+              closeMenuOnSelect={false}
+              components={animatedComponents}
+              isMulti
+              options={speakers}
+              onChange={handleSelectChange}
+              value={speakers.filter(speaker => chosenSpeakers.includes(speaker.value))}
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+
+          </div>
+
+          {/* starting File Number */}
+          <div className="flex flex-col">
+            <h1 className='font-semibold text-gray-900 text-lg'>Starting File Number</h1>
+            <input
+              type="number"
+              className="input validator bg-white border-gray-200 w-full"
+              required
+              placeholder="1"
+              min="1"
+              onChange={(e) => setStartingFileNumber(parseInt(e.target.value) || 1)}
+            />
+            <h3 className="text-gray-400 text-sm">For first batch: use 1. For second batch of 1000: use 1001, etc.</h3>
+          </div>
+
+          {/* Sentences per speaker */}
+          <div className="flex flex-col">
+            <h1 className='font-semibold text-gray-900 text-lg'>Total Number of Sentences</h1>
+            <input
+              type="number"
+              className="input validator bg-white border-gray-200 w-full"
+              required
+              placeholder="10"
+              min="1"
+              onChange={(e) => setTotalSentences(parseInt(e.target.value) || 1)}
+            />
+          </div>
+
+          {/* Sentences per speaker */}
+          <div className="flex flex-col">
+            <h1 className='font-semibold text-gray-900 text-lg'>Number of Sentences Per Speaker</h1>
+            <input
+              type="number"
+              className="input validator bg-white border-gray-200 w-full"
+              required
+              placeholder="2"
+              min="1"
+              onChange={(e) => setSentencesPerSpeaker(parseInt(e.target.value) || 1)}
+            />
+          </div>
+
+          <button
+            className={`btn ${isLoading ? "btn-disabled" : "btn-neutral"} w-full py-2 rounded font-semibold text-white`}
+            onClick={handleGenerate}
+            disabled={isLoading || chosenSpeakers.length === 0}
           >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            {isLoading ? "Generating Audio..." : "Generate Audio Dataset"}
+          </button>
+
+      </div>
+        <p className="text-gray-400 text-sm text-center">Powered by Hume.ai</p>
     </div>
   );
 }
