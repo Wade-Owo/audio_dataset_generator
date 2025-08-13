@@ -138,7 +138,7 @@ export async function POST(request: Request) {
   }
 
   const transcriptContent = successfulSentences.join("\n");
-  zip.file("Transcript.txt", transcriptContent);
+  zip.file("transcript.txt", transcriptContent);
 
   const archive = await zip.generateAsync({ type: "arraybuffer" });
 
